@@ -1,7 +1,6 @@
 #pragma once
 #include <chrono>
 
-
 class Transaction
 {
 public:
@@ -9,7 +8,6 @@ public:
 	{
 		None = 0, Credit, Debit
 	};
-	const char TransactionTypeName[3][8] = { {"None"}, {"Credit"}, {"Debit"} };
 // Constructors
 														Transaction						();
 
@@ -29,12 +27,14 @@ public:
 					 bool								equalExceptAccount				(const Transaction&)									const;
 
 // Static comparator functions for sorting using qsort
-	static			 int								ComparatorByDate				(const Transaction& one,
-																						 const Transaction& other)														{ return one.date() < other.date();     }
+	static			int									ComparatorByDate				(const void* one,
+																						 const void* two)																{ if (((const Transaction*)(one))->date() >
+																																												 ((const Transaction*)(two))->date()) return 1;
+																																										   else return -1;}
 
-	static			 int								ComparatorByAmount				(const Transaction& one,
-																						 const Transaction& other)														{ return one.amount() < other.amount(); }
-
+	static			int									ComparatorByAmount				(const void* one,
+																						 const void* two)																{ return ((const Transaction*)(one))->amount() >
+																																												 ((const Transaction*)(two))->amount(); }
 
 // Getters
 	inline			 long long							date							()														const					{ return m_date; }

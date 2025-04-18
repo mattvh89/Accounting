@@ -6,9 +6,11 @@
 #include <iostream>
 #include <filesystem>
 #include <algorithm>
+#include <cstdlib>
+#include <cassert>
 
 AccountManager::AccountManager(const char* fname, const char* pw)
-			   : m_signinSuccess(false), m_pw(pw)
+			   : m_signinSuccess(false), m_name(fname), m_pw(pw)
 {
 	std::ifstream ifs;
 	std::string hash, fileName, accountName;
@@ -99,7 +101,6 @@ void AccountManager::updateMainFile(const char* name)
 	}
 }
 
-
 void AccountManager::CreateNewMainFile(const char* name, const char* pw)
 {
 	std::ofstream ofs;
@@ -136,9 +137,13 @@ void AccountManager::CreateNewMainFile(const char* name, const char* pw)
 
 bool AccountManager::addAccount(const char* accountName)
 {
+	std::stringstream ss;
 	for (const auto& it : m_accounts)
 		if (it.first == accountName) return false;
-	Account acct(accountName, m_pw.c_str());
+
+	ss << m_name << '\\' << accountName;
+	Account acct(ss.str().c_str(), m_pw.c_str());
+	acct.setName(accountName);
 	m_accounts[accountName] = acct;
 
 	return true;
@@ -193,39 +198,55 @@ bool AccountManager::removeTransaction(std::string_view acctName, const size_t& 
 	this->getAccount("Main").removeTransaction(transaction);
 
 	this->getAccount(otherTransaction.account().data()).calculateBalance();											// recalculate the balances
-	this->getAccount(transaction.account().data()).calculateBalance();															// for all 3 accounts
+	this->getAccount(transaction.account().data()).calculateBalance();												// for all 3 accounts
 	this->getAccount("Main").calculateBalance();
 	
 	return true;
 }
 
-//Ptr<Transaction> AccountManager::getTransactionsSortedByDate(std::string_view acctname) const
-//{
-//	Ptr<Transaction> sortedList = m_accounts.find(acctname.data())->second.getLedger().getTransactions();
-//	std::sort(sortedList.begin(), sortedList.end(), Transaction::ComparatorByDate);
-//	return sortedList;
-//}
-//
-//Ptr<Transaction> AccountManager::getTransactionsSortedByAmount(std::string_view acctname) const
-//{
-//	Ptr<Transaction> sortedList = m_accounts.find(acctname.data())->second.getLedger().getTransactions();
-//	std::sort(sortedList.begin(), sortedList.end(), Transaction::ComparatorByAmount);
-//	return sortedList;
-//}
-//
-//void AccountManager::sortTransactionsByDate(std::string_view acctname)
-//{
-//	std::sort(this->getAccount(acctname).getLedger().getTransactions().begin(),
-//			  this->getAccount(acctname).getLedger().getTransactions().end(),
-//			  Transaction::ComparatorByDate);
-//}
-//
-//void AccountManager::sortTransactionsByAmount(std::string_view acctname)
-//{
-//	std::sort(this->getAccount(acctname).getLedger().getTransactions().begin(),
-//		this->getAccount(acctname).getLedger().getTransactions().end(),
-//		Transaction::ComparatorByAmount);
-//}
+void AccountManager::sortTransactionsByDate(std::string_view acctname)
+{
+	qsort((void*)&(m_accounts[acctname.data()].getLedger().getTransactions()[0]),
+		m_accounts[acctname.data()].getLedger().getTransactions().size(),
+		sizeof(Transaction),
+		Transaction::ComparatorByDate);
+	return;
+}
+
+void AccountManager::sortTransactionsByAmount(std::string_view acctname)
+{
+	qsort((void*)(&(m_accounts[acctname.data()].getLedger().getTransactions()[0])),
+		  m_accounts[acctname.data()].getLedger().getTransactions().size(),
+		  sizeof(Transaction),
+		  Transaction::ComparatorByAmount);
+	//m_accounts[acctname.data()].getLedger().saveToFile(m_name.c_str(), m_pw.c_str());
+}
+
+void AccountManager::sortMainAccountByDate()
+{
+	Ptr<Transaction> halfLedger(ARRAY, 20);
+	Ptr<Transaction>& mainLedger = m_accounts["Main"].getLedger().getTransactions();
+	
+
+	for (size_t i = 0; i < mainLedger.size(); i += 2)
+	{
+		halfLedger.addBack(mainLedger[i]);
+	}
+	std::cout << "Half ledger size: " << halfLedger.size() << std::endl;
+	Ptr<Transaction> sortedLedger(halfLedger);
+
+	for (size_t i = 0; i < halfLedger.size(); ++i)
+	{
+		std::cout << "i: " << i << '\t';
+		size_t index = 0; // mainLedger.indexOf(halfLedger[i]);
+		for (size_t n = 0; halfLedger[i] != mainLedger[n] and n < mainLedger.size(); ++n)
+			++index;
+		//++index;
+		std::cout << "Index: " << index << std::endl;
+		sortedLedger.insertAt(mainLedger[index], i + 1);
+	}
+	mainLedger = sortedLedger;
+}
 
 bool AccountManager::accountExists(const std::string& acct) const
 {

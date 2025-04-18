@@ -17,8 +17,9 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <iostream>
 //#include "Debug.h"
-#define DEBUG_OUT(msg) if(false) false
+#define DEBUG_OUT(msg) if(false) false;
 
 // Macro for easier typing
 #define Ptr smart_pointer
@@ -53,7 +54,7 @@ public:
 		}
 		_ref_count = new size_t(1);
 		_data_memory += static_cast<uint64_t>(sizeof(T) * size);
-		_total_memory += static_cast<uint64_t>(sizeof(T) * size + (sizeof(size_t) << 1));
+		_total_memory += static_cast<uint64_t>(sizeof(T) * size + sizeof(size_t));
 	}
 
 	// Creating a smart_pointer with a new T argument, optional size
@@ -63,7 +64,7 @@ public:
 		DEBUG_OUT("Creating Object: New T already created");
 		DEBUG_OUT("\tReferences: " << *_ref_count);
 		_data_memory += static_cast<uint64_t>(sizeof(T) * size);
-		_total_memory += static_cast<uint64_t>(sizeof(T) * size + (sizeof(size_t) << 1));
+		_total_memory += static_cast<uint64_t>(sizeof(T) * size + sizeof(size_t));
 	}
 
 	// Create smart_pointer from a regular value
@@ -73,7 +74,7 @@ public:
 		DEBUG_OUT("Creating new object for user");
 		DEBUG_OUT("References: " << *_ref_count);
 		_data_memory += static_cast<uint64_t>(sizeof(T) * _size);
-		_total_memory += static_cast<uint64_t>(sizeof(T) * _size + (sizeof(size_t) << 1));
+		_total_memory += static_cast<uint64_t>(sizeof(T) * _size + sizeof(size_t));
 	}
 
 	// Copy Constructor
@@ -90,7 +91,7 @@ public:
 
 	// Move Constructor
 	smart_pointer(smart_pointer<T>&& ptr)  noexcept
-		: _data(ptr._data), _ref_count(ptr._ref_count), _size(ptr._size), _capacity(ptr._capacity)
+		: _data(std::move(ptr._data)), _ref_count(std::move(ptr._ref_count)), _size(ptr._size), _capacity(ptr._capacity)
 	{
 		if (this != &ptr)
 		{
@@ -108,7 +109,7 @@ public:
 	{
 		DEBUG_OUT("Destructor called");
 		// If reference count is 0 after decremneting
-		if (_ref_count && _data && (--(*_ref_count) == 0))
+		if ((_ref_count != nullptr) && (_data != nullptr) && (--(*_ref_count) == 0))
 		{
 			DEBUG_OUT("\tReferences: 0");
 			DEBUG_OUT("\t\tDeleting memory");
@@ -130,7 +131,7 @@ public:
 
 			delete _ref_count;
 			_data_memory -= static_cast<uint64_t>(sizeof(T) * _size);
-			_total_memory -= static_cast<uint64_t>(sizeof(T) * _size + (sizeof(size_t) << 1));
+			_total_memory -= static_cast<uint64_t>(sizeof(T) * _size + sizeof(size_t));
 			++_deletions;
 		}
 		else
@@ -172,12 +173,12 @@ public:
 				// extraneous information
 				++_deletions;
 				_data_memory -= static_cast<uint64_t>(sizeof(T) * _size);
-				_total_memory -= static_cast<uint64_t>(sizeof(T) * _size + (sizeof(size_t) << 1));
+				_total_memory -= static_cast<uint64_t>(sizeof(T) * _size + sizeof(size_t));
 			}
 			_capacity = ptr._capacity;
-			_data = ptr._data;
+			_data = std::move(ptr._data);
 			_size = ptr._size;
-			_ref_count = ptr._ref_count;
+			_ref_count = std::move(ptr._ref_count);
 
 			ptr._data = nullptr;
 			ptr._ref_count = nullptr;
@@ -249,7 +250,7 @@ public:
 			_ref_count = new size_t(1);
 			_size = size;
 			_data_memory += static_cast<uint64_t>(sizeof(T) * size);
-			_total_memory += static_cast<uint64_t>(sizeof(T) * size + (sizeof(size_t) << 1));
+			_total_memory += static_cast<uint64_t>(sizeof(T) * size + sizeof(size_t));
 		}
 		// Else smart pointer already holds data
 		else
@@ -284,9 +285,33 @@ public:
 	size_t addBack(const T& t)
 	{
 		if (_capacity == 0) this->increaseBy((_size >> 1) + 1);
-		if (_size == _capacity) _data[0] = t;
-		else                   _data[_size - _capacity] = t;
+		*(_data + (_size - _capacity)) = t;
 		--_capacity;
+		return this->size();
+	}
+
+	size_t insertAt(const T& t, const size_t& i)
+	{
+		if (i >= _size)
+			this->increaseBy(i - this->size() + 2);
+
+		if (i == this->size())
+			return this->addBack(t);
+		else
+		if (*(_data + i) == T())
+		{
+			*(_data) = t;
+			--_capacity;
+			return this->size();
+		}
+
+		if (_capacity == 0) this->increaseBy(1);
+
+		for (size_t x = this->size(); x >= i; --x)
+			* (_data + x + 1) = *(_data + (x));
+
+		--_capacity;
+		*(_data + i) = t;
 		return this->size();
 	}
 
@@ -309,7 +334,9 @@ public:
 		return this->size();
 	}
 
-	int indexOf(const T& other)
+	inline void empty() { _capacity = _size; }
+
+	int indexOf(const T& other) const
 	{
 		for (size_t i = 0; i < this->size(); ++i)
 			if (*_data == other)
@@ -331,6 +358,12 @@ public:
 	// Static function to check the number of times the desctructor
 	// has actually deleted data
 	static size_t deletions() { return _deletions; }
+
+	T& operator[](const size_t& i)
+	{
+		if (i >= _size) throw std::runtime_error("Bad index");
+		return *(_data + i);
+	}
 
 	// Access data members of T just like a normal pointer
 	inline T* operator->(void) { return _data; }
@@ -415,124 +448,45 @@ public:
 		{
 		}
 
+		//Iterator(Iterator&& it)
+		//{
+		//	ptr = std::move(*it);
+		//}
+
 		// Copy Constructor
 		Iterator& operator=(const Iterator& other)
 		{
-			if(this != &other)
+			if (this != &other)
 				ptr = other.ptr;
 			return *this;
 		}
 
-		// dereference operator - dereferences the data to whic our poitner points
-		inline T& operator*() const
-		{
-			return *ptr;
-		}
+		T& operator*() const { return *ptr; }
+		T* operator->() const { return ptr; }
 
-		inline T& operator[](std::ptrdiff_t n)
-		{
-			return *(ptr + n);
-		}
+		Iterator& operator++() { ++ptr; return *this; }
+		Iterator operator++(int) { Iterator temp = *this; ++ptr; return temp; }
+		Iterator& operator--() { --ptr; return *this; }
+		Iterator operator--(int) { Iterator temp = *this; --ptr; return temp; }
 
-		inline Iterator& operator+=(std::ptrdiff_t n)
-		{
-			ptr += n;
-			return *this;
-		}
+		Iterator operator+(size_t n) const { return Iterator(ptr + n); }
+		Iterator operator-(size_t n) const { return Iterator(ptr - n); }
+		ptrdiff_t operator-(const Iterator& other) const { return ptr - other.ptr; }
 
-		inline Iterator& operator-=(std::ptrdiff_t n)
-		{
-			ptr -= n;
-			return *this;
-		}
+		Iterator& operator+=(size_t n) { ptr += n; return *this; }
+		Iterator& operator-=(size_t n) { ptr -= n; return *this; }
 
-		inline Iterator& operator-(std::ptrdiff_t n)
-		{
-			return Iterator(ptr - n);
-		}
+		T& operator[](size_t n) const { return ptr[n]; }
 
-		inline std::ptrdiff_t operator-(const Iterator& it)
-		{
-			return ptr - it.ptr;
-		}
-
-		inline Iterator& operator+(std::ptrdiff_t n)
-		{
-			return Iterator(ptr + n);
-		}
-
-		inline std::ptrdiff_t operator+(const Iterator& it)
-		{
-			return ptr + it.ptr;
-		}
-
-		// increment operator
-		Iterator& operator++()
-		{
-			++ptr;
-			return *this;
-		}
-
-		// post incremnt operator
-		Iterator& operator++(int)
-		{
-			Iterator temp = *this;
-			++ptr;
-			return temp;
-		}
-
-		// decremnet operator
-		Iterator& operator--()
-		{
-			--ptr;
-			return *this;
-		}
-
-		// post decremnt operator
-		Iterator& operator--(int)
-		{
-			Iterator temp = *this;
-			--ptr;
-			return *this;
-		}
-
-		// Equality operator
-		inline bool operator==(const Iterator& other) const noexcept
-		{
-			return ptr == other.ptr ? true : false;
-		}
-
-		// Inequality operator
-		inline bool operator!=(const Iterator& other) const
-		{
-			return !(*this == other);
-		}
-
-		// Less than operator
-		inline bool operator<(const Iterator& other) const
-		{
-			return ptr < other.ptr;
-		}
-
-		inline bool operator<=(const Iterator& other) const
-		{
-			return ptr <= other.ptr;
-		}
-
-		// Greater than operator
-		inline bool operator>(const Iterator& other) const
-		{
-			return ptr > other.ptr;
-		}
-
-		inline bool operator>=(const Iterator& other) const
-		{
-			return ptr >= other.ptr;
-		}
+		bool operator==(const Iterator& other) const { return ptr == other.ptr; }
+		bool operator!=(const Iterator& other) const { return ptr != other.ptr; }
+		bool operator<(const Iterator& other) const { return ptr < other.ptr; }
+		bool operator>(const Iterator& other) const { return ptr > other.ptr; }
+		bool operator<=(const Iterator& other) const { return ptr <= other.ptr; }
+		bool operator>=(const Iterator& other) const { return ptr >= other.ptr; }
 
 	private:
 		T* ptr;
-		size_t index;
 	};
 
 	// Define smart_pointer<T>::begin() function to get Iterator to first object

@@ -134,6 +134,7 @@
     <ClInclude Include="AccountManager.h" />
     <ClInclude Include="Encrypt.h" />
     <ClInclude Include="Ledger.h" />
+    <ClInclude Include="Report.h" />
     <ClInclude Include="smart_pointer.h" />
     <ClInclude Include="Transaction.h" />
   </ItemGroup>
@@ -144,6 +145,7 @@
     <ClCompile Include="Encrypt.cpp" />
     <ClCompile Include="Ledger.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Report.cpp" />
     <ClCompile Include="smart_pointer.cpp" />
     <ClCompile Include="Transaction.cpp" />
   </ItemGroup>

@@ -30,8 +30,7 @@ public:
 
 							size_t											removeTransaction						(const size_t& index);
 
-							size_t											removeLastTransaction					()																		{ m_transactions.removeBack(); }
+							size_t											removeLastTransaction					()																		{ return m_transactions.removeBack(); }
 private:
 	Ptr<Transaction> m_transactions;
 };
-

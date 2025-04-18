@@ -1,4 +1,5 @@
 #include "Transaction.h"
+#include <iostream>
 
 Transaction::Transaction()
 		    : m_date(0), m_amnt(0.0f), m_type(Transaction::TransactionType::None), m_desc("")
@@ -17,11 +18,12 @@ Transaction::Transaction(const Transaction& t)
 
 Transaction& Transaction::operator=(const Transaction& t)
 {
-	m_date = t.m_date;
-	m_amnt = t.m_amnt;
-	m_type = t.m_type;
-	m_desc = t.m_desc;
-	m_acct = t.m_acct;
+	if (this == &t or this == nullptr) return *this;
+	m_date = t.date();
+	m_amnt = t.amount();
+	m_type = t.type();
+	m_desc = t.description();
+	m_acct = t.account();
 	return *this;
 }
 

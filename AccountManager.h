@@ -7,8 +7,8 @@
 #define SIGNED_IN  true
 #define SIGNED_OUT false
 
-#define NUM_DEFAULT_ACCOUNTS 8
-const std::string DEFAULT_ACCOUNTS[] = { "Main", "Checking", "Saving", "Expense", "Receivable", "Payable", "WorkDone", "Capital" };
+#define NUM_DEFAULT_ACCOUNTS 9
+const std::string DEFAULT_ACCOUNTS[] = { "Main", "Checking", "Saving", "Expense", "Receivable", "Payable", "WorkDone", "Capital", "Taxes"};
 
 class AccountManager
 {
@@ -32,13 +32,11 @@ public:
 							bool									removeTransaction							(std::string_view acctname,
 																												 const size_t& index);
 
-	/*						Ptr<Transaction>						getTransactionsSortedByDate					(std::string_view acctname) 						const;
-
-							Ptr<Transaction>						getTransactionsSortedByAmount				(std::string_view acctname)							const;
-
 							void									sortTransactionsByDate						(std::string_view acctname);
 
-							void									sortTransactionsByAmount					(std::string_view acctname);*/
+							void									sortTransactionsByAmount					(std::string_view acctname);
+
+							void									sortMainAccountByDate						();
 
 // Getters
 	inline					bool									isGood										()													const		{ return m_signinSuccess; }
@@ -57,7 +55,8 @@ public:
 							int										indexOfAccount								(const std::string& name)							const;
 private:
 	std::map<std::string, Account>			 m_accounts;
-	std::string							     m_pw;
+	std::string							     m_name,
+											 m_pw;
 	bool									 m_signinSuccess;
 };
 
