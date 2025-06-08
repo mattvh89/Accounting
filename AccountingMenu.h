@@ -42,129 +42,129 @@ class AccountingMenu
 {
 public:
 
-														AccountingMenu									();
+													AccountingMenu								();
 
-	inline		const	Ptr<AccountManager>&			getManager										()									const			{ return m_acctManager; }
+	inline			const		Ptr<AccountManager>&					getManager								()						const			{ return m_acctManager; }
 
-						void							run												();
+						void							run									();
 
 
 private:
-						void							updateMainFile									();
+						void							updateMainFile								();
 
 						void							printHorizontalBorder							(const COORD& size,
-																										 const ForeGroundColor& fg,
-																										 const BackGroundColor& bg,
-																										 bool fIsTop);
+																						 const ForeGroundColor& fg,
+																						 const BackGroundColor& bg,
+																						 bool fIsTop);
 
 // Text and cursor functions
-						void							setCursorPosition								(const unsigned short& x,
-																										 const unsigned short& y);
+						void							setCursorPosition							(const unsigned short& x,
+																						 const unsigned short& y);
 
-	inline				void							setTextColor									(const ForeGroundColor& fg,
-																										 const BackGroundColor& bg)							{ printf(CSI "%d;%dm", fg, bg); } 
+	inline					void							setTextColor								(const ForeGroundColor& fg,
+																						 const BackGroundColor& bg)						{ printf(CSI "%d;%dm", fg, bg); } 
 
-	inline				void							echoOff											()													{  m_outputMode &= ~ENABLE_ECHO_INPUT; 
+	inline					void							echoOff									()													{  m_outputMode &= ~ENABLE_ECHO_INPUT; 
 																																							   SetConsoleMode(m_stdInHandle, m_outputMode); }
 
-	inline				void							echoOn											()													{ m_outputMode |= ENABLE_ECHO_INPUT;
+	inline					void							echoOn									()													{ m_outputMode |= ENABLE_ECHO_INPUT;
 																																							  SetConsoleMode(m_stdInHandle, m_outputMode);  }
 
-	inline				void							hideCursor										()									const			{ printf(ESC "[?25l"); }
+	inline					void							hideCursor								()						const			{ printf(ESC "[?25l"); }
 
-	inline				void							showCursor										()									const			{ printf(ESC "[?25h"); }
+	inline					void							showCursor								()						const			{ printf(ESC "[?25h"); }
 
 // Screen clearing methods
 
-	inline				void							clearLine										()													{ setCursorPosition(0, m_coord.Y);
+	inline					void							clearLine								()													{ setCursorPosition(0, m_coord.Y);
 																																							  std::cout << CLEAR_LINE << CLEAR_LINE << std::flush;
 																																							  setCursorPosition(0, m_coord.Y);}
 
-	inline				void							clearHalfLine									()													{ setCursorPosition(m_coord.X, m_coord.Y);
+	inline					void							clearHalfLine								()													{ setCursorPosition(m_coord.X, m_coord.Y);
 																																							  std::cout << CLEAR_LINE << std::flush;
 																																							  setCursorPosition(m_coord.X, m_coord.Y); }
-						void							clearHalfScreen									();
+						void							clearHalfScreen								();
 
-						void							clearTwoThirds									();
+						void							clearTwoThirds								();
 
-						void							clearLine										(const unsigned short& y);
+						void							clearLine								(const unsigned short& y);
 
-						void							clearHalfLine									(const unsigned short& y);
+						void							clearHalfLine								(const unsigned short& y);
 
-	inline				void							clearScreen										()													{ 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
+	inline					void							clearScreen								()													{ 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 																																								for (size_t i = SIGNIN_LINE; i < SCREEN_HEIGHT - 2; ++i) 
 																																									this->clearLine((unsigned short)i); }
 
 // Special Calculator functions
-						void							saveConsoleArea									(SMALL_RECT& rect,
-																										 const COORD& coord,
-																										 Ptr<CHAR_INFO>& buffer)			const;
+						void							saveConsoleArea								(SMALL_RECT& rect,
+																						 const COORD& coord,
+																						 Ptr<CHAR_INFO>& buffer)			const;
 
-						void							restoreConsoleArea								(SMALL_RECT& rect,
-																										 const COORD& coord,
-																										 Ptr<CHAR_INFO>& buffer)			const;
+						void							restoreConsoleArea							(SMALL_RECT& rect,
+																						 const COORD& coord,
+																						 Ptr<CHAR_INFO>& buffer)			const;
 
-						void							printCalculator									(char indexToHilight = ' ');
+						void							printCalculator								(char indexToHilight = ' ');
 
-						void							runCalculator									();
+						void							runCalculator								();
 
 // Special Calendar functions
-	inline	static		bool							isLeap											(int year)											{ return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0); }
+	inline	static				bool							isLeap									(int year)											{ return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0); }
 
-			static		int								getDaysInMonth									(int month, 
-																										 int year);
+		static				int							getDaysInMonth								(int month, 
+																						 int year);
 
-			static		int								getStartDay										(int month, 
-																										 int year);
+		static				int							getStartDay								(int month, 
+																						 int year);
 
-						void							printCalendarMonth								(int month, 
-																										 int year, 
-																										 int startX,
-																										 int startY);
+						void							printCalendarMonth							(int month, 
+																						 int year, 
+																						 int startX,
+																						 int startY);
 
-						void							printCalendarYearBottomScreen					(int year);
+						void							printCalendarYearBottomScreen						(int year);
 
 // Menu functions
 	// Print functions
-						void							printTitle										();
+						void							printTitle								();
 
-						void							printAccountNames								();
+						void							printAccountNames							();
 
 						void							printTransactionHeader							();
 
-						void							printTransaction								(const Transaction& transaction,
-																										 const size_t& lineNumber);
+						void							printTransaction							(const Transaction& transaction,
+																						 const size_t& lineNumber);
 
-						void							printAllTransactionsWithScrolling				(const Ptr<Transaction>& list);
+						void							printAllTransactionsWithScrolling					(const Ptr<Transaction>& list);
 
 						void							printAllTransactions							(const Ptr<Transaction>& list);
 	// Input fucntions
-						int								inputDate										(const size_t& lineNumber);
+						int								inputDate							(const size_t& lineNumber);
 
-						bool							signin											();
+						bool							signin									();
 
 	// Other functions
-						void							presentMenu										();
+						void							presentMenu								();
 
 						void							highlighScrollOption							(const unsigned short& options);
 
-						unsigned short					getMainMenuInput								();
+						unsigned short						getMainMenuInput							();
 
-						bool							addAccount										();
+						bool							addAccount								();
 
-						bool							addTransaction									();
+						bool							addTransaction								();
 
-						bool							removeTransaction								();
+						bool							removeTransaction							();
 
-						bool							viewAccount										();
+						bool							viewAccount								();
 
-						bool							viewAccount										(const std::string& acctName);
+						bool							viewAccount								(const std::string& acctName);
 
-						bool							generateReport									();
+						bool							generateReport								();
 
-						bool							generateReport									(const std::string& acctName);
+						bool							generateReport								(const std::string& acctName);
 
-						void							summary											();
+						void							summary									();
 
 
 
@@ -173,20 +173,20 @@ private:
 	const std::string SCROLLING[NUM_SCROLLS] = { "[/|\\]Up", "[\\|/]Down", "[Pg Up]", "[Pg Dwn]", "[End]Quit" };
 
 	const COORD CALCULATOR_COORD = { SCREEN_WIDTH  - 9,
-									 SCREEN_HEIGHT - 7  };
+					 SCREEN_HEIGHT - 7  };
 
 private:
 	Ptr<AccountManager> m_acctManager;
 	Ptr<std::string>    m_accountNames;
-	Ptr<Report>			m_reports;
-	std::string			m_userName;
-	std::string			m_lastViewedAccount;
-	HANDLE				m_stdOutHandle,
-						m_stdInHandle;
-	DWORD				m_outputMode;
-	COORD				m_coord;
-	INPUT_RECORD		m_ir;
-	double				m_calcResult;
-	bool				m_firstSignIn;
+	Ptr<Report>	    m_reports;
+	std::string	    m_userName;
+	std::string	    m_lastViewedAccount;
+	HANDLE		    m_stdOutHandle,
+			    m_stdInHandle;
+	DWORD		    m_outputMode;
+	COORD		    m_coord;
+	INPUT_RECORD	    m_ir;
+	double		    m_calcResult;
+	bool		    m_firstSignIn;
 };
 
