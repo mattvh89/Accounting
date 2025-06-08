@@ -16,7 +16,8 @@ AccountingMenu::AccountingMenu()
 	m_stdOutHandle(GetStdHandle(STD_OUTPUT_HANDLE)),
 	m_stdInHandle(GetStdHandle(STD_INPUT_HANDLE)),
 	m_outputMode(), m_coord(), m_ir(),
-	m_calcResult(0.0)
+	m_calcResult(0.0),
+	m_firstSignIn(true)
 {
 	if (!GetConsoleMode(m_stdOutHandle, &m_outputMode))
 		std::cerr << "GetConsoleMode (output) failed with error " << GetLastError() << '\n';
@@ -35,7 +36,6 @@ AccountingMenu::AccountingMenu()
 	if (!SetConsoleWindowInfo(m_stdOutHandle, TRUE, &windowSize))
 		std::cerr << "SetConsoleWindowInfo failed with error " << GetLastError() << '\n';
 
-	// Optionally, position cursor
 	m_coord.X = 0;
 	m_coord.Y = 0;
 	SetConsoleCursorPosition(m_stdOutHandle, m_coord);
@@ -46,7 +46,6 @@ void AccountingMenu::run()
 	unsigned short mainMenuKey;
 	bool running = true;
 	bool signinStatus = SIGNED_OUT;
-	bool firstSignin = true;
 	this->clearScreen();
 	this->clearLine(SCREEN_WIDTH - 1); this->clearLine(SCREEN_WIDTH - 2);
 	while (running)
@@ -59,10 +58,10 @@ void AccountingMenu::run()
 		}
 
 		// If we just signed in, print he Main account
-		if (firstSignin)
+		if (m_firstSignIn)
 		{
 			this->viewAccount("Main");
-			firstSignin = false;
+			m_firstSignIn = false;
 		}
 
 
@@ -82,6 +81,10 @@ void AccountingMenu::run()
 			this->printCalendarYearBottomScreen(2025);
 			break;
 
+		case 's':
+			this->summary();
+			break;
+
 		case '1':
 			if (this->addAccount())
 			{
@@ -94,7 +97,7 @@ void AccountingMenu::run()
 			break;
 		case '2':
 			signinStatus = SIGNED_OUT;
-			for (size_t i = SIGNIN_LINE; i < SCREEN_HEIGHT - 4; ++i)
+			for (short i = SIGNIN_LINE; i < SCREEN_HEIGHT - 4; ++i)
 				clearLine((unsigned short)i);
 			break;
 		case '3':
@@ -116,13 +119,7 @@ void AccountingMenu::run()
 			this->generateReport();
 			break;
 		case '7':																							// sort
-			if(m_lastViewedAccount.empty())
-			{
-				//m_acctManager->sortMainAccountByDate();
-				//this->viewAccount("Main");
-			}
-			else
-
+			if(not m_lastViewedAccount.empty())
 			{
 				if (m_lastViewedAccount.compare("Main") == 0) break;
 				m_acctManager->sortTransactionsByDate(m_lastViewedAccount);
@@ -159,10 +156,10 @@ void AccountingMenu::restoreConsoleArea(SMALL_RECT& rect, const COORD& coord, Pt
 
 void AccountingMenu::printCalculator(char indexToHilight)
 {
-	const char CALC_BUTTON_ARRAY[4][5] = { {'=', '7', '8', '9', 'x'},
-										   {'Q', '4', '5', '6', '/'},
-										   {'D', '1', '2', '3', '+'},
-										   {'C', ' ', '0', '.', '-'} };
+	static const char CALC_BUTTON_ARRAY[4][5] = { {'=', '7', '8', '9', 'x'},
+				  							    {'Q', '4', '5', '6', '/'},
+												{'D', '1', '2', '3', '+'},
+												{'C', 'S', '0', '.', '-'} };
 
 	for (size_t y = 0; y < 4; ++y)
 	{
@@ -186,7 +183,7 @@ void AccountingMenu::printCalculator(char indexToHilight)
 
 void AccountingMenu::runCalculator()
 {
-	enum Operators { None, Add, Subtract, Divide, Multiply };
+	enum Operators { None, Add, Subtract, Divide, Multiply, Equals };
 
 	std::stringstream ss;
 	Ptr<CHAR_INFO> buffer(ARRAY, 5 * 10);
@@ -224,11 +221,12 @@ void AccountingMenu::runCalculator()
 		ch = m_ir.Event.KeyEvent.uChar.AsciiChar;
 		this->printCalculator(ch);
 		Sleep(100);
-		if (ch >= '0' and ch <= '9' or ch == '.')																					// if it's 0-9 or a . add it to the string and print it
+		if (ch >= '0' and ch <= '9' or ch == '.' or
+			(ss.str().empty() and ch == '-'))																						// if it's 0-9 or a . add it to the string and print it
 		{
 			if (deleteOnNextNum)
 			{
-				ss.str("");                          // clear previous number
+				ss.str("");																											// clear previous number
 				ss.clear();
 				this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
 				std::cout << "          ";
@@ -259,6 +257,7 @@ void AccountingMenu::runCalculator()
 		else
 		if(ch == 'c' or ch == 'C')																									// clear
 		{
+			ss.str("");
 			num1 = 0.0;
 			num2 = 0.0;
 			ans = 0.0;
@@ -269,37 +268,57 @@ void AccountingMenu::runCalculator()
 		else																														// otherwise it was an operator
 		{
 			this->setCursorPosition(static_cast<unsigned short>(SCREEN_WIDTH - ss.str().length() - 1), static_cast<unsigned short>(SCREEN_HEIGHT - 7));
+			if (ch == '=' and calcOperator == Operators::None)
+			{
+				ss >> num1;
+				continue;
+			}
+			//else
+			//if(ch != '=')
+			//{
+			//	ss >> num2;
+			//	switch (calcOperator)
+			//	{
+			//	case Operators::Add:
+			//		ans = num1 + num2;
+			//		break;
+			//	case Operators::Subtract:
+			//		ans = num1 - num2;
+			//		break;
+			//	case Operators::Multiply:
+			//		ans = num1 * num2;
+			//		break;
+			//	case Operators::Divide:
+			//		ans = num1 / num2;
+			//		break;
+			//	}
+			//	num1 = ans;
+			//	this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
+			//	std::cout << "          ";
+			//	this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
+			//	std::cout << std::setw(7) << ans;
+			//}
 			switch (ch)
 			{
 			case '+':
-				ss >> num1;
-				std::cout << ss.str() << " +";
+				if (calcOperator == Operators::None) std::cout << ss.str() << " +";
 				calcOperator = Operators::Add;
-				deleteOnNextNum = true;
 				break;
 			case '-':
-				ss >> num1;
-				std::cout << ss.str() << " -";
+				if (calcOperator == Operators::None) std::cout << ss.str() << " -";
 				calcOperator = Operators::Subtract;
-				deleteOnNextNum = true;
 				break;
 			case 'x':
-				ss >> num1;
-				std::cout << ss.str() << " x";
+				if (calcOperator == Operators::None) std::cout << ss.str() << " x";
 				calcOperator = Operators::Multiply;
-				deleteOnNextNum = true;
 				break;
 			case '*':
-				ss >> num1;
-				std::cout << ss.str() << " x";
+				if (calcOperator == Operators::None) std::cout << ss.str() << " x";
 				calcOperator = Operators::Multiply;
-				deleteOnNextNum = true;
 				break;
 			case '/':
-				ss >> num1;
-				std::cout << ss.str() << " /";
+				if (calcOperator == Operators::None) std::cout << ss.str() << " /";
 				calcOperator = Operators::Divide;
-				deleteOnNextNum = true;
 				break;
 			case '=':
 				ss.clear();
@@ -326,10 +345,11 @@ void AccountingMenu::runCalculator()
 				std::cout << "          ";
 				this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
 				std::cout << std::setw(9) << std::right << std::setprecision(2) << ans;
-				num1 = ans;
+				calcOperator = Operators::Equals;
 				break;
 			}
 			ss.str("");
+			deleteOnNextNum = true;
 		}
 		
 	}
@@ -411,8 +431,8 @@ void AccountingMenu::printCalendarMonth(int month, int year, int startX, int sta
 
 void AccountingMenu::printCalendarYearBottomScreen(int currentYear)
 {
-	this->hideCursor();
-	for (size_t y = 23; y < SCREEN_HEIGHT - 2; ++y)
+	//this->hideCursor();
+	for (short y = 23; y < SCREEN_HEIGHT - 2; ++y)
 		this->clearLine(y);
 	for (int i = 1; i < 12; i += 4)
 	{
@@ -586,14 +606,14 @@ void AccountingMenu::printAllTransactionsWithScrolling(const Ptr<Transaction>& l
 				break;
 
 			case VK_PRIOR:
-				scroller -= totalY;
+				scroller -= (totalY - 8);
 				if (scroller < 0) scroller = 0;
 
 				this->highlighScrollOption(2);
 				break;
 
 			case VK_NEXT:
-				scroller += totalY;
+				scroller += (totalY - 8);
 				if (scroller > list.size() - 1 - totalY) scroller = (int)list.size() - 42;
 
 				this->highlighScrollOption(3);
@@ -852,11 +872,12 @@ bool AccountingMenu::addTransaction()
 		clearHalfLine(); 
 		std::cin.clear(); 
 		std::cin.ignore(); 
-		std::cin >> amount; 
+		std::cin >> amount;
+		if (amount <= 0.01) return false;
 	} while(std::cin.fail());
 
 	// When
-	daysSinceEpoch = this->inputDate(SIGNIN_LINE + 7);
+	daysSinceEpoch = this->inputDate((size_t(SIGNIN_LINE + 7)));
 	if (daysSinceEpoch == -1) return false;
 
 	// Credit or Debit
@@ -867,7 +888,8 @@ bool AccountingMenu::addTransaction()
 		std::cin.clear();
 		std::cin.ignore();
 		std::cin >> type;
-	} while (std::cin.fail() or (type != 1 and type != 2));
+		if (type != 1 and type != 2) return false;
+	} while (std::cin.fail());
 
 	// The other account
 	do
@@ -936,8 +958,9 @@ bool AccountingMenu::removeTransaction()
 		return false;
 	}
 	// Prompt of the index number, a bad index number will stop input
+	this->clearLine(SCREEN_HEIGHT - 1);
 	std::cout << "#:      (Bad index to quit)";
-	this->setCursorPosition(4, SCREEN_HEIGHT - 2);
+	this->setCursorPosition(4, SCREEN_HEIGHT - 1);
 	std::cin >> index;
 
 	//Bad index or bad input will stop the process
@@ -955,6 +978,7 @@ bool AccountingMenu::removeTransaction()
 	// Remove transaction and print the new ledger with the transaction removed
 	m_acctManager->removeTransaction(acctName, index);
 	this->viewAccount(acctName);
+	return true;
 }
 
 bool AccountingMenu::viewAccount()
@@ -1002,7 +1026,9 @@ bool AccountingMenu::viewAccount(const std::string& account)
 
 	// Print the header and the transactions. If scrolling isn't needed to view all the accounts then don't view with scrolling, otherwise view with scrolling
 	this->printTransactionHeader();
-	if (m_acctManager->getAccount(account).getLedger().size() < SCREEN_HEIGHT - SIGNIN_LINE - 5)
+
+	if (m_acctManager->getAccount(account).getLedger().size() < (size_t)(SCREEN_HEIGHT - SIGNIN_LINE - 5)
+	or  m_firstSignIn)
 		this->printAllTransactions(m_acctManager->getAccount(account).getLedger().getTransactions());
 	else
 		this->printAllTransactionsWithScrolling(m_acctManager->getAccount(account).getLedger().getTransactions());
@@ -1084,7 +1110,7 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 	switch (type)
 	{
 	case 1:																																// Single date
-		daysSinceEpoch = this->inputDate(SIGNIN_LINE + 3);
+		daysSinceEpoch = this->inputDate((size_t)SIGNIN_LINE + 3);
 		if (m_reports.size() > 0)
 			report.generateReportByDate(report, daysSinceEpoch);
 		else
@@ -1095,12 +1121,12 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 		currentYear = now.tm_year + 1900;
 		this->printCalendarYearBottomScreen(currentYear);
 
-		this->setCursorPosition(1, SIGNIN_LINE + 3);
+		this->setCursorPosition(1, (size_t)SIGNIN_LINE + 3);
 		std::cout << "From:";
-		daysSinceEpoch = this->inputDate(SIGNIN_LINE + 4);
-		this->setCursorPosition(1, SIGNIN_LINE + 5);
+		daysSinceEpoch = this->inputDate((size_t)SIGNIN_LINE + 4);
+		this->setCursorPosition(1, (size_t)SIGNIN_LINE + 5);
 		std::cout << "To:";
-		otherDaysSinceEpoch = this->inputDate(SIGNIN_LINE + 6);
+		otherDaysSinceEpoch = this->inputDate((size_t)SIGNIN_LINE + 6);
 		if (daysSinceEpoch > otherDaysSinceEpoch)
 		{
 			this->setCursorPosition((SCREEN_WIDTH >> 1) - 14, SCREEN_HEIGHT >> 1);
@@ -1187,12 +1213,13 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 	this->setCursorPosition(1, SIGNIN_LINE + 2);
 	this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
 	this->printTransactionHeader();
-	if (report.getReport().size() < SCREEN_HEIGHT - SIGNIN_LINE - 5)
+	if (report.getReport().size() < (size_t)(SCREEN_HEIGHT - SIGNIN_LINE - 5))
 		this->printAllTransactions(report.getReport());
 	else
 		this->printAllTransactionsWithScrolling(report.getReport());
 
 		// Calculate balance and print it
+	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 	this->clearLine(SCREEN_HEIGHT - 2);
 	this->setCursorPosition(1, SCREEN_HEIGHT - 2);
 	balance = report.calculateTotal();
@@ -1203,6 +1230,7 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 											this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
 	std::cout << "Total: $" << std::setprecision(2) << balance;
 	double memKb = static_cast<double>(Ptr<Transaction>::memoryUsage(false) / 1000);
+	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 	std::cout << "    Total Heap Memory Usage: " <<  memKb << "Kb";
 	
 
@@ -1243,6 +1271,50 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 	return true;
 }
 
+void AccountingMenu::summary()
+{
+	double total = 0.00;
+	this->clearScreen();
+	this->clearLine(SCREEN_HEIGHT - 2);
+
+	this->setCursorPosition(1, 4);
+	this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+	std::cout << std::left << std::setw(20) << "Account:";
+	this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
+	std::cout << std::setw(11) << "Balance:";
+	this->setCursorPosition(1, 5);
+	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+	std::cout << "--------------------------------------------------------------------------------------------------\n";
+	for (auto& accountName : m_acctManager->getAccountNames())
+	{
+		if (accountName == "Main"
+		or  accountName == "Capital"
+		or  accountName == "WorkDone"
+		or  accountName == "Expense"
+		or  accountName == "Taxes"
+		or  accountName.substr(0, 2).compare("20") == 0) 
+			continue;
+		
+		double balance = m_acctManager->getAccount(accountName).calculateBalance();
+
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::setw(20) << accountName;
+
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black); 
+		std::cout << "$ " << std::setw(9);
+
+		if (balance > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else				this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+
+		std::cout << balance << "\n";
+		total += balance;
+	}
+
+	if (total > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+	else			  this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+	std::cout << "\n\nTotal: $" << total << std::endl;
+}
+
 void AccountingMenu::updateMainFile()
 {
 	m_acctManager->updateMainFile(m_userName.c_str());
@@ -1255,7 +1327,7 @@ void AccountingMenu::printHorizontalBorder(const COORD& size, const ForeGroundCo
 	printf(CSI "%d;%dm", bg, fg);																				// Make the border white on blue
 	printf(fIsTop ? "l" : "m");																					// print left corner 
 
-	for (size_t i = 1; i < size.X - 1; ++i)
+	for (unsigned short i = 1; i < size.X - 1; ++i)
 		printf("q");																							// draw the line from side to side, non inclusively
 
 	printf(fIsTop ? "k" : "j");																					// print right corner

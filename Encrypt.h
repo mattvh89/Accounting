@@ -35,7 +35,7 @@ private:
         0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
     };
 
-    uint8_t  data[64];
+    uint8_t  data[64] = { 0 };
     uint64_t bitlen = 0;
     size_t   datalen = 0;
 };

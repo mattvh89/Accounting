@@ -3,7 +3,7 @@
 #include <iomanip>
 
 // Caesars cypher. 
-// A strong password with unpredictable output is very strong
+// A strong password with unpredictable output is fairly strong
 std::string encrypt(std::string_view str, std::string_view key)
 {
     std::stringstream ss;

@@ -164,6 +164,8 @@ private:
 
 						bool							generateReport									(const std::string& acctName);
 
+						void							summary											();
+
 
 
 private:
@@ -185,5 +187,6 @@ private:
 	COORD				m_coord;
 	INPUT_RECORD		m_ir;
 	double				m_calcResult;
+	bool				m_firstSignIn;
 };
 

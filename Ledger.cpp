@@ -20,7 +20,7 @@ bool Ledger::loadFromFile(const char* fname, const char* pw)
 		ifs.open(fname, std::ios::binary);
 		while (ifs.peek() != EOF)
 		{
-			size_t size;
+			size_t size = 0;
 			ifs.read(reinterpret_cast<char*>(&size), sizeof(size));
 			std::string line(size, '\0');
 			ifs.read(&line[0], size);

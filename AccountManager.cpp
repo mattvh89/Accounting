@@ -222,32 +222,6 @@ void AccountManager::sortTransactionsByAmount(std::string_view acctname)
 	//m_accounts[acctname.data()].getLedger().saveToFile(m_name.c_str(), m_pw.c_str());
 }
 
-void AccountManager::sortMainAccountByDate()
-{
-	Ptr<Transaction> halfLedger(ARRAY, 20);
-	Ptr<Transaction>& mainLedger = m_accounts["Main"].getLedger().getTransactions();
-	
-
-	for (size_t i = 0; i < mainLedger.size(); i += 2)
-	{
-		halfLedger.addBack(mainLedger[i]);
-	}
-	std::cout << "Half ledger size: " << halfLedger.size() << std::endl;
-	Ptr<Transaction> sortedLedger(halfLedger);
-
-	for (size_t i = 0; i < halfLedger.size(); ++i)
-	{
-		std::cout << "i: " << i << '\t';
-		size_t index = 0; // mainLedger.indexOf(halfLedger[i]);
-		for (size_t n = 0; halfLedger[i] != mainLedger[n] and n < mainLedger.size(); ++n)
-			++index;
-		//++index;
-		std::cout << "Index: " << index << std::endl;
-		sortedLedger.insertAt(mainLedger[index], i + 1);
-	}
-	mainLedger = sortedLedger;
-}
-
 bool AccountManager::accountExists(const std::string& acct) const
 {
 	if (m_accounts.find(acct) == m_accounts.end()) return false;
@@ -292,4 +266,3 @@ int AccountManager::indexOfAccount(const std::string& name) const
 		return (int)std::distance(m_accounts.begin(), it);
 	return -1;
 }
-

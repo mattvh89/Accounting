@@ -3,7 +3,7 @@
 * Author - Matthew Van Helden
 * Date - August 2023
 *
-*	This class is a facsimile of the shared_pointer STL class. It's goal is to automatically
+*	This class is a reinvention of the shared_pointer STL class. It's goal is to automatically
 * handle memory management for any type of data.
 *
 *	This class also acts as a smart pointer to an array that can be dynamically resized.
@@ -448,12 +448,7 @@ public:
 		{
 		}
 
-		//Iterator(Iterator&& it)
-		//{
-		//	ptr = std::move(*it);
-		//}
-
-		// Copy Constructor
+		// assignment
 		Iterator& operator=(const Iterator& other)
 		{
 			if (this != &other)

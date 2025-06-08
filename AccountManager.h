@@ -4,11 +4,11 @@
 #include "Account.h"
 #include "smart_pointer.h"
 
-#define SIGNED_IN  true
-#define SIGNED_OUT false
+constexpr bool SIGNED_IN  = true;
+constexpr bool SIGNED_OUT = false;
 
-#define NUM_DEFAULT_ACCOUNTS 9
-const std::string DEFAULT_ACCOUNTS[] = { "Main", "Checking", "Saving", "Expense", "Receivable", "Payable", "WorkDone", "Capital", "Taxes"};
+constexpr unsigned NUM_DEFAULT_ACCOUNTS = 9;
+constexpr std::string DEFAULT_ACCOUNTS[] = { "Main", "Checking", "Saving", "Expense", "Receivable", "Payable", "WorkDone", "Capital", "Taxes"};
 
 class AccountManager
 {
@@ -35,8 +35,6 @@ public:
 							void									sortTransactionsByDate						(std::string_view acctname);
 
 							void									sortTransactionsByAmount					(std::string_view acctname);
-
-							void									sortMainAccountByDate						();
 
 // Getters
 	inline					bool									isGood										()													const		{ return m_signinSuccess; }
