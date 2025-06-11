@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <string>
 #include <cstdio>
+#include <locale>
 
 
 AccountingMenu::AccountingMenu()
@@ -159,7 +160,7 @@ void AccountingMenu::printCalculator(char indexToHilight)
 	static const char CALC_BUTTON_ARRAY[4][5] = { {'=', '7', '8', '9', 'x'},
 				  							    {'Q', '4', '5', '6', '/'},
 												{'D', '1', '2', '3', '+'},
-												{'C', 'S', '0', '.', '-'} };
+												{'C', 'M', '0', '.', '-'} };
 
 	for (size_t y = 0; y < 4; ++y)
 	{
@@ -183,179 +184,179 @@ void AccountingMenu::printCalculator(char indexToHilight)
 
 void AccountingMenu::runCalculator()
 {
-	enum Operators { None, Add, Subtract, Divide, Multiply, Equals };
+	enum Operators { None, Add, Subtract, Multiply, Divide, Equals };
 
 	std::stringstream ss;
 	Ptr<CHAR_INFO> buffer(ARRAY, 5 * 10);
 	SMALL_RECT window = { SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7, 9, 6 };
-	double num1 = 0.0,
-		   num2 = 0.0,
-		   ans  = 0.0;
-	DWORD read;
+
+	double num1 = 0.0, num2 = 0.0, ans = 0.0, saved = 0.0;
 	Operators calcOperator = Operators::None;
+	DWORD read;
 	char ch;
-	bool calcRunning = true,
-		 compound = false,
-		 deleteOnNextNum = false;
+	bool calcRunning = true;
+	bool deleteOnNextNum = false;
+	bool savedInMemory = false;
 
 	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
-
 	this->echoOff();
 	this->hideCursor();
-
 	this->saveConsoleArea(window, CALCULATOR_COORD, buffer);
 
-	this->setCursorPosition(SCREEN_WIDTH - 9, static_cast<unsigned short>(CALCULATOR_COORD.Y));
-	std::cout << std::setw(10) << ' ';
+	auto clearDisplay = [&]() 
+						   {
+						       this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
+							   std::cout << std::setw(10) << ' ';
+						   };
 
+	auto printNumber = [&](const std::string& str) 
+						  {
+						       this->setCursorPosition(SCREEN_WIDTH - static_cast<short>(str.length()), SCREEN_HEIGHT - 7);
+							   std::cout << str;
+						  };
+
+	clearDisplay();
 	this->setCursorPosition(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 7);
 
 	while (calcRunning)
 	{
 		this->printCalculator();
-
-		ReadConsoleInput(m_stdInHandle, &m_ir, 1, &read);																			// read character
-		if (m_ir.EventType != KEY_EVENT or !m_ir.Event.KeyEvent.bKeyDown)
+		ReadConsoleInput(m_stdInHandle, &m_ir, 1, &read);
+		if (m_ir.EventType != KEY_EVENT || !m_ir.Event.KeyEvent.bKeyDown)
 			continue;
 
 		ch = m_ir.Event.KeyEvent.uChar.AsciiChar;
 		this->printCalculator(ch);
 		Sleep(100);
-		if (ch >= '0' and ch <= '9' or ch == '.' or
-			(ss.str().empty() and ch == '-'))																						// if it's 0-9 or a . add it to the string and print it
+
+		// Handle numeric input
+		if ((ch >= '0' && ch <= '9') || ch == '.' ||
+			(ss.str().empty() && calcOperator == Operators::None && ch == '-'))
 		{
 			if (deleteOnNextNum)
 			{
-				ss.str("");																											// clear previous number
-				ss.clear();
-				this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-				std::cout << "          ";
+				ss.str(""); ss.clear();
+				clearDisplay();
 				deleteOnNextNum = false;
 			}
-			if (ss.str().length() > 7) continue;
-			ss << ch;
 
-			this->setCursorPosition(static_cast<unsigned short>(SCREEN_WIDTH - ss.str().length()) + 1, static_cast<unsigned short>(SCREEN_HEIGHT - 7));
-			std::cout << ss.str();
+			if (ss.str().length() <= 7)
+			{
+				ss << ch;
+				printNumber(ss.str());
+			}
+			continue;
 		}
 
-		else
-		if (ch == 'q' or ch == 'Q')																									// q to quit
+		// Quit
+		if (ch == 'q' || ch == 'Q')
 		{
 			calcRunning = false;
 			m_calcResult = ans;
+			break;
 		}
-		else
-		if (ch == 'd' or ch == 'D')																									// delete
+
+		// Delete last digit
+		if (ch == 'd' || ch == 'D')
 		{
-			ss.str(ss.str().substr(0, ss.str().length() - 1));
-			this->setCursorPosition(static_cast<unsigned short>(SCREEN_WIDTH - 9), static_cast<unsigned short>(SCREEN_HEIGHT - 7));
-			std::cout << "          ";
-			this->setCursorPosition(static_cast<unsigned short>(SCREEN_WIDTH - ss.str().length()), static_cast<unsigned short>(SCREEN_HEIGHT - 7));
-			std::cout << ss.str();
+			std::string temp = ss.str();
+			if (!temp.empty()) temp.pop_back();
+			ss.str(temp); ss.clear();
+			clearDisplay();
+			printNumber(temp);
+			continue;
 		}
-		else
-		if(ch == 'c' or ch == 'C')																									// clear
+
+		// Clear calculator
+		if (ch == 'c' || ch == 'C')
 		{
-			ss.str("");
-			num1 = 0.0;
-			num2 = 0.0;
-			ans = 0.0;
+			ss.str(""); ss.clear();
+			num1 = num2 = ans = 0.0;
 			calcOperator = Operators::None;
-			this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-			std::cout << "          ";
+			clearDisplay();
+			continue;
 		}
-		else																														// otherwise it was an operator
+
+		if (ch == 'm' || ch == 'M')
 		{
-			this->setCursorPosition(static_cast<unsigned short>(SCREEN_WIDTH - ss.str().length() - 1), static_cast<unsigned short>(SCREEN_HEIGHT - 7));
-			if (ch == '=' and calcOperator == Operators::None)
+			if (!savedInMemory)
 			{
-				ss >> num1;
-				continue;
+				saved = ans;  // store last answer
+				savedInMemory = true;
 			}
-			//else
-			//if(ch != '=')
-			//{
-			//	ss >> num2;
-			//	switch (calcOperator)
-			//	{
-			//	case Operators::Add:
-			//		ans = num1 + num2;
-			//		break;
-			//	case Operators::Subtract:
-			//		ans = num1 - num2;
-			//		break;
-			//	case Operators::Multiply:
-			//		ans = num1 * num2;
-			//		break;
-			//	case Operators::Divide:
-			//		ans = num1 / num2;
-			//		break;
-			//	}
-			//	num1 = ans;
-			//	this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-			//	std::cout << "          ";
-			//	this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-			//	std::cout << std::setw(7) << ans;
-			//}
-			switch (ch)
+			else
 			{
-			case '+':
-				if (calcOperator == Operators::None) std::cout << ss.str() << " +";
-				calcOperator = Operators::Add;
-				break;
-			case '-':
-				if (calcOperator == Operators::None) std::cout << ss.str() << " -";
-				calcOperator = Operators::Subtract;
-				break;
-			case 'x':
-				if (calcOperator == Operators::None) std::cout << ss.str() << " x";
-				calcOperator = Operators::Multiply;
-				break;
-			case '*':
-				if (calcOperator == Operators::None) std::cout << ss.str() << " x";
-				calcOperator = Operators::Multiply;
-				break;
-			case '/':
-				if (calcOperator == Operators::None) std::cout << ss.str() << " /";
-				calcOperator = Operators::Divide;
-				break;
-			case '=':
-				ss.clear();
-				ss >> num2;
-				ss.str("");
-				ss.clear();
-				switch (calcOperator)
+				ss.str(""); ss.clear();
+				ss << saved;
+
+				clearDisplay();
+				printNumber(ss.str());
+
+				savedInMemory = false;
+				deleteOnNextNum = false;
+			}
+			continue;
+		}
+
+		// Handle operator input
+		if (std::string("+-*/x=").find(ch) != std::string::npos)
+		{
+			if (!ss.str().empty())
+			{
+				ss.clear(); ss.seekg(0);
+				double currentNum = 0.0;
+				ss >> currentNum;
+				ss.str(""); ss.clear();
+
+				if (calcOperator == None || calcOperator == Equals)
 				{
-				case Operators::Add:
-					ans = num1 + num2;
-					break;
-				case Operators::Subtract:
-					ans = num1 - num2;
-					break;
-				case Operators::Multiply:
-					ans = num1 * num2;
-					break;
-				case Operators::Divide:
-					ans = num1 / num2;
-					break;
+					num1 = currentNum;
+				}
+				else
+				{
+					num2 = currentNum;
+
+					switch (calcOperator)
+					{
+					case Add:      ans = num1 + num2; break;
+					case Subtract: ans = num1 - num2; break;
+					case Multiply: ans = num1 * num2; break;
+					case Divide:
+						if (num2 == 0.0) {
+							clearDisplay();
+							printNumber(" ERROR ");
+							continue;
+						}
+						ans = num1 / num2;
+						break;
+					default: break;
+					}
+
+					num1 = ans;
+					clearDisplay();
+					this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
+					std::cout << std::setw(9) << std::right << std::fixed << std::setprecision(2) << ans;
 				}
 
-				this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-				std::cout << "          ";
-				this->setCursorPosition(SCREEN_WIDTH - 9, SCREEN_HEIGHT - 7);
-				std::cout << std::setw(9) << std::right << std::setprecision(2) << ans;
-				calcOperator = Operators::Equals;
-				break;
+				deleteOnNextNum = true;
 			}
-			ss.str("");
-			deleteOnNextNum = true;
+
+			switch (ch)
+			{
+			case '+': calcOperator = Add; break;
+			case '-': calcOperator = Subtract; break;
+			case 'x':
+			case '*': calcOperator = Multiply; break;
+			case '/': calcOperator = Divide; break;
+			case '=': calcOperator = Equals; break;
+			}
 		}
-		
 	}
+
 	this->restoreConsoleArea(window, CALCULATOR_COORD, buffer);
 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 }
+
 
 int AccountingMenu::getDaysInMonth(int month, int year)
 {
@@ -1274,14 +1275,19 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 void AccountingMenu::summary()
 {
 	double total = 0.00;
+	std::locale original_locale = std::cout.getloc();
+	std::locale comma_locale("");
+
+	std::cout.imbue(comma_locale);
+
 	this->clearScreen();
 	this->clearLine(SCREEN_HEIGHT - 2);
 
 	this->setCursorPosition(1, 4);
-	this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 	std::cout << std::left << std::setw(20) << "Account:";
 	this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
-	std::cout << std::setw(11) << "Balance:";
+	std::cout << std::setw(11) << "  Balance:";
 	this->setCursorPosition(1, 5);
 	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
 	std::cout << "--------------------------------------------------------------------------------------------------\n";
@@ -1298,21 +1304,30 @@ void AccountingMenu::summary()
 		double balance = m_acctManager->getAccount(accountName).calculateBalance();
 
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << std::setw(20) << accountName;
+		std::cout << std::left << std::setw(20) << accountName;
 
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black); 
-		std::cout << "$ " << std::setw(9);
+		std::cout << "$ " << std::setw(10);
 
 		if (balance > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
 		else				this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
 
-		std::cout << balance << "\n";
+		std::cout << std::right << balance << "\n";
 		total += balance;
 	}
 
+	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+	std::cout << "\n\n--------------------------------------------------------------------------------------------------\n";
+	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
+	std::cout << "Total:";
+	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+	std::cout << " $";
+
 	if (total > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
 	else			  this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
-	std::cout << "\n\nTotal: $" << total << std::endl;
+	std::cout << total << std::endl;
+
+	std::cout.imbue(original_locale);
 }
 
 void AccountingMenu::updateMainFile()
