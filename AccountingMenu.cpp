@@ -47,6 +47,11 @@ void AccountingMenu::run()
 	unsigned short mainMenuKey;
 	bool running = true;
 	bool signinStatus = SIGNED_OUT;
+	std::time_t t = std::time(nullptr);
+	std::tm now;
+	localtime_s(&now, &t);
+	int currentYear = now.tm_year + 1900;
+
 	this->clearScreen();
 	this->clearLine(SCREEN_WIDTH - 1); this->clearLine(SCREEN_WIDTH - 2);
 	while (running)
@@ -61,7 +66,8 @@ void AccountingMenu::run()
 		// If we just signed in, print he Main account
 		if (m_firstSignIn)
 		{
-			this->viewAccount("Main");
+			this->summary();
+			this->printCalendarYearBottomScreen((unsigned short)currentYear);
 			m_firstSignIn = false;
 		}
 
@@ -79,7 +85,7 @@ void AccountingMenu::run()
 			break;
 
 		case 'd':
-			this->printCalendarYearBottomScreen(2025);
+			this->printCalendarYearBottomScreen((unsigned short)currentYear);
 			break;
 
 		case 's':
@@ -98,6 +104,7 @@ void AccountingMenu::run()
 			break;
 		case '2':
 			signinStatus = SIGNED_OUT;
+			m_firstSignIn = true;
 			for (short i = SIGNIN_LINE; i < SCREEN_HEIGHT - 4; ++i)
 				clearLine((unsigned short)i);
 			break;
@@ -130,29 +137,15 @@ void AccountingMenu::run()
 		case '8':																							// exit program
 			running = false;
 			for (size_t i = 1; i <= SCREEN_HEIGHT; ++i) this->clearLine((unsigned short)i);
-			this->setCursorPosition(1, 1);
+			this->setCursorPosition(0, 0);
+			std::locale comma_locale("");
+			std::cout.imbue(comma_locale);
+			std::cout << "Memory used at exit:   " << (Ptr<Transaction>::memoryUsage(true) + Ptr<std::string>::memoryUsage(true) + Ptr<AccountManager>::memoryUsage(true)) / 1000 << " Kb\n";
 			break;
 		}
-		this->setCursorPosition(1, 1);
+		this->setCursorPosition(1, 2);
 		this->echoOff();
 	}
-}
-
-void AccountingMenu::saveConsoleArea(SMALL_RECT& rect, const COORD& coord, Ptr<CHAR_INFO>& buffer) const
-{
-	COORD bufferSize = { 10, 5 };
-
-	if (buffer.size() < static_cast<size_t>(bufferSize.X * bufferSize.Y))
-		buffer.increaseBy(static_cast<size_t>(bufferSize.X * bufferSize.Y) - buffer.size());
-
-	ReadConsoleOutput(m_stdOutHandle, buffer, bufferSize, { 0, 0 }, & rect);
-}
-
-void AccountingMenu::restoreConsoleArea(SMALL_RECT& rect, const COORD& coord, Ptr<CHAR_INFO>& buffer) const
-{
-	COORD bufferSize = { 10, 5 };
-
-	WriteConsoleOutput(m_stdOutHandle, buffer, bufferSize, { 0, 0 }, &rect);
 }
 
 void AccountingMenu::printCalculator(char indexToHilight)
@@ -201,7 +194,6 @@ void AccountingMenu::runCalculator()
 	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 	this->echoOff();
 	this->hideCursor();
-	this->saveConsoleArea(window, CALCULATOR_COORD, buffer);
 
 	auto clearDisplay = [&]() 
 						   {
@@ -211,7 +203,7 @@ void AccountingMenu::runCalculator()
 
 	auto printNumber = [&](const std::string& str) 
 						  {
-						       this->setCursorPosition(SCREEN_WIDTH - static_cast<short>(str.length()), SCREEN_HEIGHT - 7);
+						       this->setCursorPosition(SCREEN_WIDTH - static_cast<unsigned short>(str.length()), SCREEN_HEIGHT - 7);
 							   std::cout << str;
 						  };
 
@@ -322,7 +314,8 @@ void AccountingMenu::runCalculator()
 					case Subtract: ans = num1 - num2; break;
 					case Multiply: ans = num1 * num2; break;
 					case Divide:
-						if (num2 == 0.0) {
+						if (num2 == 0.0) 
+						{
 							clearDisplay();
 							printNumber(" ERROR ");
 							continue;
@@ -352,28 +345,25 @@ void AccountingMenu::runCalculator()
 			}
 		}
 	}
-
-	this->restoreConsoleArea(window, CALCULATOR_COORD, buffer);
 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 }
 
-
-int AccountingMenu::getDaysInMonth(int month, int year)
+unsigned short AccountingMenu::getDaysInMonth(int month, int year)
 {
-	static const int days[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+	static const unsigned short days[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
 	if (month == 2 && isLeap(year))
 		return 29;
 	return days[month - 1];
 }
 
-int AccountingMenu::getStartDay(int month, int year)
+unsigned short AccountingMenu::getStartDay(int month, int year)
 {
 	std::tm time_in = { 0, 0, 0, 1, month - 1, year - 1900 }; // 1st of month
 	std::mktime(&time_in);
-	return time_in.tm_wday;									  // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+	return static_cast<unsigned short>(time_in.tm_wday);      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
-void AccountingMenu::printCalendarMonth(int month, int year, int startX, int startY)
+void AccountingMenu::printCalendarMonth(unsigned short month, unsigned short year, unsigned short startX, unsigned short startY)
 {
 	static const std::string months[] = {
 	"January", "February", "March",     "April",
@@ -381,9 +371,9 @@ void AccountingMenu::printCalendarMonth(int month, int year, int startX, int sta
 	"September", "October", "November", "December"
 	};
 
-	int daysInMonth = getDaysInMonth(month, year);
-	int startDay = getStartDay(month, year);
-	int lineCount = 0;
+	unsigned short daysInMonth = getDaysInMonth(month, year);
+	unsigned short startDay = getStartDay(month, year);
+	unsigned short lineCount = 0;
 
 	std::time_t t = std::time(nullptr);
 	std::tm now;
@@ -391,10 +381,12 @@ void AccountingMenu::printCalendarMonth(int month, int year, int startX, int sta
 
 	int currentDay = now.tm_mday;
 	int currentMonth = now.tm_mon + 1;
-	int currentYear = now.tm_year + 1900;
+	//int currentYear = now.tm_year + 1900;
+
+	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 
 	this->setCursorPosition(startX, startY);															// print the month and year
-	std::cout << "     " << months[month - 1] << " " << year;
+	std::cout << std::setfill(' ') << "     " << months[month - 1] << " " << year;
 
 	this->setCursorPosition(startX, startY + 1);														// print the days of the week
 	std::cout << "Su Mo Tu We Th Fr Sa ";
@@ -430,12 +422,11 @@ void AccountingMenu::printCalendarMonth(int month, int year, int startX, int sta
 	}
 }
 
-void AccountingMenu::printCalendarYearBottomScreen(int currentYear)
+void AccountingMenu::printCalendarYearBottomScreen(unsigned short currentYear)
 {
-	//this->hideCursor();
-	for (short y = 23; y < SCREEN_HEIGHT - 2; ++y)
+	for (unsigned short y = 23; y < SCREEN_HEIGHT - 2; ++y)
 		this->clearLine(y);
-	for (int i = 1; i < 12; i += 4)
+	for (unsigned short i = 1; i < 12; i += 4)
 	{
 		this->printCalendarMonth(i,     currentYear, CALENDAR_COL_1, 23 + (8 * (i / 4)));
 		this->printCalendarMonth(i + 1, currentYear, CALENDAR_COL_2, 23 + (8 * (i / 4)));
@@ -468,8 +459,8 @@ void AccountingMenu::printAccountNames()
 	std::time_t t = std::time(nullptr);
 	std::tm now;
 	localtime_s(&now, &t);
-	int currentMonth = now.tm_mon + 1;
-	int currentYear = now.tm_year + 1900;
+	unsigned short currentMonth = static_cast<unsigned short>(now.tm_mon + 1);
+	unsigned short currentYear = static_cast<unsigned short>(now.tm_year + 1900);
 	unsigned short y = FIRST_LINE;
 	constexpr unsigned short X = (RIGHT_THIRD + ((SCREEN_WIDTH - RIGHT_THIRD) / 2));
 
@@ -615,7 +606,7 @@ void AccountingMenu::printAllTransactionsWithScrolling(const Ptr<Transaction>& l
 
 			case VK_NEXT:
 				scroller += (totalY - 8);
-				if (scroller > list.size() - 1 - totalY) scroller = (int)list.size() - 42;
+				if (scroller > list.size() - 1 - totalY) scroller = (unsigned short)list.size() - 42;
 
 				this->highlighScrollOption(3);
 				break;
@@ -842,7 +833,7 @@ bool AccountingMenu::addAccount()
 bool AccountingMenu::addTransaction()
 {
 	Transaction t;
-	std::time_t time = 0;
+	//std::time_t time = 0;
 	std::string account, description, other;
 	float amount;
 	int daysSinceEpoch;
@@ -989,6 +980,8 @@ bool AccountingMenu::viewAccount()
 
 	this->clearScreen();
 
+	this->printAccountNames();
+
 	this->echoOn();
 	this->showCursor();
 	this->clearScreen();
@@ -1001,6 +994,18 @@ bool AccountingMenu::viewAccount()
 		setCursorPosition(10, SIGNIN_LINE);
 		clearHalfLine();
 		std::cin >> account;
+
+		if (std::atoi(account.c_str()) != 0)
+		{
+			unsigned short acctNum = static_cast<unsigned short>(atoi(account.c_str()));
+			account = this->getManager()->getAccountNames()[acctNum -1];
+		}
+		else
+		{
+			account[0] = static_cast<char>(std::toupper(account[0]));
+			for (unsigned short i = 1; i < account.length(); ++i) account[i] = static_cast<char>(std::tolower(account[i]));
+		}
+
 	} while (not m_acctManager->accountExists(account));
 	m_lastViewedAccount = account;
 	return this->viewAccount(account);
@@ -1080,7 +1085,7 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 	static const std::string OPTIONS[] = { "Single Date", "Date Range", "Single Amount", "Amount Range", "Description" };
 	std::time_t t = std::time(nullptr);
 	std::tm now;
-	int currentYear;
+	unsigned short currentYear;
 	int type = 0;
 	int daysSinceEpoch, otherDaysSinceEpoch;
 	double balance;
@@ -1119,7 +1124,7 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 		break;
 	case 2:																																// date range
 		localtime_s(&now, &t);																											// print calendar year
-		currentYear = now.tm_year + 1900;
+		currentYear = static_cast<unsigned short>(now.tm_year + 1900);
 		this->printCalendarYearBottomScreen(currentYear);
 
 		this->setCursorPosition(1, (size_t)SIGNIN_LINE + 3);
@@ -1286,8 +1291,11 @@ void AccountingMenu::summary()
 	this->setCursorPosition(1, 4);
 	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 	std::cout << std::left << std::setw(20) << "Account:";
+
 	this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
-	std::cout << std::setw(11) << "  Balance:";
+	std::cout << std::setw(11) << "  Balance:"
+			  << std::fixed << std::setprecision(2)
+		;
 	this->setCursorPosition(1, 5);
 	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
 	std::cout << "--------------------------------------------------------------------------------------------------\n";
@@ -1304,16 +1312,21 @@ void AccountingMenu::summary()
 		double balance = m_acctManager->getAccount(accountName).calculateBalance();
 
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << std::left << std::setw(20) << accountName;
+		std::cout << std::left << std::setw(20) << std::setfill(' ') << accountName;
 
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black); 
-		std::cout << "$ " << std::setw(10);
+		std::cout << "$" << std::setw(10) << std::setfill('.');
+
+		total += balance;
 
 		if (balance > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
-		else				this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+		else
+		{
+			this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+			if (balance < 0.00) balance *= -1;
+		}
 
 		std::cout << std::right << balance << "\n";
-		total += balance;
 	}
 
 	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
@@ -1359,7 +1372,7 @@ void AccountingMenu::setCursorPosition(const unsigned short& x, const unsigned s
 
 void AccountingMenu::clearHalfScreen()
 {
-	for (unsigned int i = 0; i < SCREEN_HEIGHT - 2; ++i)
+	for (unsigned short i = 0; i < SCREEN_HEIGHT - 2; ++i)
 	{
 		setCursorPosition(1, SIGNIN_LINE + i);
 		clearHalfLine(i);
@@ -1368,7 +1381,7 @@ void AccountingMenu::clearHalfScreen()
 
 void AccountingMenu::clearTwoThirds()
 {
-	for (unsigned int i = 0; i < SCREEN_HEIGHT - 6; ++i)
+	for (unsigned short i = 0; i < SCREEN_HEIGHT - 6; ++i)
 	{
 		setCursorPosition(1, SIGNIN_LINE + i);
 		std::cout << CLEAR_LINE << "                      ";												// should be 71 spaces

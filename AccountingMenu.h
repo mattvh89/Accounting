@@ -3,6 +3,7 @@
 #include "smart_pointer.h"
 #include "Report.h"
 #include <Windows.h>
+#include <winspool.h>
 #include <iostream>
 
 constexpr short NUM_SCROLLS = 5;
@@ -95,15 +96,6 @@ private:
 																																								for (size_t i = SIGNIN_LINE; i < SCREEN_HEIGHT - 2; ++i) 
 																																									this->clearLine((unsigned short)i); }
 
-// Special Calculator functions
-						void							saveConsoleArea									(SMALL_RECT& rect,
-																										 const COORD& coord,
-																										 Ptr<CHAR_INFO>& buffer)			const;
-
-						void							restoreConsoleArea								(SMALL_RECT& rect,
-																										 const COORD& coord,
-																										 Ptr<CHAR_INFO>& buffer)			const;
-
 						void							printCalculator									(char indexToHilight = ' ');
 
 						void							runCalculator									();
@@ -111,18 +103,18 @@ private:
 // Special Calendar functions
 	inline	static		bool							isLeap											(int year)											{ return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0); }
 
-			static		int								getDaysInMonth									(int month, 
+			static		unsigned short					getDaysInMonth									(int month, 
 																										 int year);
 
-			static		int								getStartDay										(int month, 
+			static		unsigned short					getStartDay										(int month, 
 																										 int year);
 
-						void							printCalendarMonth								(int month, 
-																										 int year, 
-																										 int startX,
-																										 int startY);
+						void							printCalendarMonth								(unsigned short month, 
+																										 unsigned short year, 
+																										 unsigned short startX,
+																										 unsigned short startY);
 
-						void							printCalendarYearBottomScreen					(int year);
+						void							printCalendarYearBottomScreen					(unsigned short year);
 
 // Menu functions
 	// Print functions
