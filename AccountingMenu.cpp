@@ -386,10 +386,14 @@ void AccountingMenu::printCalendarMonth(unsigned short month, unsigned short yea
 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 
 	this->setCursorPosition(startX, startY);															// print the month and year
-	std::cout << std::setfill(' ') << "     " << months[month - 1] << " " << year;
+	std::cout << std::setfill(' ') << "     ";
+	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+	std::cout << months[month - 1] << " " << year;
 
+	this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
 	this->setCursorPosition(startX, startY + 1);														// print the days of the week
 	std::cout << "Su Mo Tu We Th Fr Sa ";
+	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 
 	this->setCursorPosition(startX, startY + 2);														// padd the first line where previous dates belong to the preceding month
 	for (int i = 0; i < startDay; ++i)
@@ -408,7 +412,7 @@ void AccountingMenu::printCalendarMonth(unsigned short month, unsigned short yea
 		else
 		if(month == currentMonth and day == currentDay)													// Mark the current day in blue
 		{
-			this->setTextColor(ForeGroundColor::White, BackGroundColor::Blue);
+			this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 			std::cout << std::setw(2) << day;
 			this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 			std::cout << " ";
@@ -439,18 +443,19 @@ void AccountingMenu::printTitle()
 {
 	COORD border = { 0, 0 };
 	border.X = SCREEN_WIDTH;
-	border.Y = 0;
+	border.Y = 1;
 
 	for (size_t i = 1; i <= SCREEN_HEIGHT; ++i) this->clearLine((unsigned short)i);								// clear the screen
 
-	printHorizontalBorder(border, ForeGroundColor::White, BackGroundColor::Blue, true);							// top border line
+	this->setCursorPosition(1, 1);
+	this->printHorizontalBorder(border, ForeGroundColor::Blue, BackGroundColor::Black, true);							// top border line
 
-	setCursorPosition(SCREEN_WIDTH / 2 - (unsigned short)TITLE.length() / 2, 2);								// set cursor to print title
+	this->setCursorPosition(SCREEN_WIDTH / 2 - (unsigned short)TITLE.length() / 2, 2);								// set cursor to print title
 	std::cout << TITLE;
 
 	border.Y = 3;																								// set cursor to print bottomr title border
-	setCursorPosition(0, 3);
-	printHorizontalBorder(border, ForeGroundColor::White, BackGroundColor::Blue, false);						// bottom border
+	this->setCursorPosition(0, 3);
+	this->printHorizontalBorder(border, ForeGroundColor::Blue, BackGroundColor::Black, false);						// bottom border
 }
 
 void AccountingMenu::printAccountNames()
@@ -498,12 +503,22 @@ void AccountingMenu::printAccountNames()
 void AccountingMenu::printTransactionHeader()
 {
 	std::cout << "#####  "
-		<< "Date:        "
-		<< "Amount:   "
-		<< "Credit/Debit: "
-		<< "Account:                                 "
-		<< "Description:\n";
-	std::cout << "_____ ____________ __________ ___________  ________  _______________________________________________" << std::endl;
+		<< "Date        "
+		<< "Amount    "
+		<< "Credit/Debit  "
+		<< "Account                                 "
+		<< "Description\n";
+	//this->printHorizontalBorder(COORD{ 5, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	//std::cout << " ";
+	//this->printHorizontalBorder(COORD{ 6, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	//std::cout << "      ";
+	//this->printHorizontalBorder(COORD{ 8, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	//std::cout << ' ';
+	//this->printHorizontalBorder(COORD{ 14, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	//this->printHorizontalBorder(COORD{ 9, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	//std::cout << "  ";
+	//this->printHorizontalBorder(COORD{ 48, 0 }, ForeGroundColor::Yellow, BackGroundColor::Black, false);
+	std::cout << "_____  __________  __________ ___________  ________  _______________________________________________" << std::endl;
 }
 
 void AccountingMenu::printTransaction(const Transaction& transaction, const size_t& lineNumber)
@@ -769,7 +784,7 @@ void AccountingMenu::presentMenu()
 	setCursorPosition(1, SCREEN_HEIGHT);																		// Display the options at the bottom of the screen
 	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 	for (BYTE i = 0; i < NUM_OPTIONS; ++i)
-		ss << i + 1 << ".) " << OPTIONS[i] << "  ";
+		ss << i + 1 << ".) " << MENU_OPTIONS[i] << "  ";
 	std::cout << std::setw(SCREEN_WIDTH) << ss.str();
 	this->setTextColor(ForeGroundColor::White, BackGroundColor::Black);
 	this->setCursorPosition(1, 1);
@@ -854,6 +869,11 @@ bool AccountingMenu::addTransaction()
 		setCursorPosition(10, SIGNIN_LINE + 5); 
 		clearHalfLine(); 
 		std::cin >> account;
+		if (std::atoi(account.c_str()) != 0)
+		{
+			unsigned short acctNum = static_cast<unsigned short>(atoi(account.c_str()));
+			account = this->getManager()->getAccountNames()[acctNum - 1];
+		}
 		if (account.compare("q") == 0 or account.compare("Q") == 0) return false;
 	} while( not m_acctManager->accountExists(account));
 
@@ -889,6 +909,11 @@ bool AccountingMenu::addTransaction()
 		setCursorPosition(13, SIGNIN_LINE + 9);
 		clearHalfLine();
 		std::cin >> other;
+		if (std::atoi(other.c_str()) != 0)
+		{
+			unsigned short acctNum = static_cast<unsigned short>(atoi(other.c_str()));
+			other = this->getManager()->getAccountNames()[acctNum - 1];
+		}
 		if (other.compare("q") == 0 or other.compare("Q") == 0) return false;
 	} while (not m_acctManager->accountExists(other) or account.compare(other) == 0);
 
@@ -1279,6 +1304,7 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 
 void AccountingMenu::summary()
 {
+	unsigned short totalLine = 8;
 	double total = 0.00;
 	std::locale original_locale = std::cout.getloc();
 	std::locale comma_locale("");
@@ -1290,15 +1316,21 @@ void AccountingMenu::summary()
 
 	this->setCursorPosition(1, 4);
 	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
-	std::cout << std::left << std::setw(20) << "Account:";
+	std::cout << std::left << std::setw(20) << std::setfill(' ')
+			  << " Account";
 
 	this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
-	std::cout << std::setw(11) << "  Balance:"
-			  << std::fixed << std::setprecision(2)
-		;
+	std::cout << std::setw(11) << " Balance"
+			  << std::fixed << std::setprecision(2);
+
+	this->setCursorPosition(60, 4);
+	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+	std::cout << "Overview";
+
 	this->setCursorPosition(1, 5);
 	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
-	std::cout << "--------------------------------------------------------------------------------------------------\n";
+	//std::cout << "-------             -------\n";
+	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, true);
 	for (auto& accountName : m_acctManager->getAccountNames())
 	{
 		if (accountName == "Main"
@@ -1308,11 +1340,13 @@ void AccountingMenu::summary()
 		or  accountName == "Taxes"
 		or  accountName.substr(0, 2).compare("20") == 0) 
 			continue;
-		
+	
+		++totalLine;
 		double balance = m_acctManager->getAccount(accountName).calculateBalance();
 
+		
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << std::left << std::setw(20) << std::setfill(' ') << accountName;
+		std::cout << ' ' << std::left << std::setw(20) << std::setfill(' ') << accountName;
 
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black); 
 		std::cout << "$" << std::setw(10) << std::setfill('.');
@@ -1329,16 +1363,62 @@ void AccountingMenu::summary()
 		std::cout << std::right << balance << "\n";
 	}
 
-	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
-	std::cout << "\n\n--------------------------------------------------------------------------------------------------\n";
+	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, false);
+	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, true);
+
+	std::cout << ' ';
 	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 	std::cout << "Total:";
-	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+	this->setTextColor(ForeGroundColor::Blue,  BackGroundColor::Black);
 	std::cout << " $";
 
 	if (total > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
-	else			  this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+	else			  this->setTextColor(ForeGroundColor::Red,   BackGroundColor::Black);
 	std::cout << total << std::endl;
+
+	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, false);
+
+	if(m_acctManager->accountExists("WorkDone") and m_acctManager->accountExists("Expense"))
+	{
+		double bal = m_acctManager->getAccount("WorkDone").calculateBalance() * -1;
+		double total2 = bal;
+
+		this->setCursorPosition(50, 6);
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::left << std::setfill(' ') << std::setw(20) << "WorkDone";
+
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << '$';
+		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else			this->setTextColor(ForeGroundColor::Red,   BackGroundColor::Black);
+		std::cout << std::setw(10) << std::setfill('.') << std::right << bal;
+
+		bal = m_acctManager->getAccount("Expense").calculateBalance() * -1;
+		total2 += bal;
+
+		this->setCursorPosition(50, 7);
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::left << std::setfill(' ') << std::setw(20) << "Expense";
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << "$";
+		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else 
+		{
+			this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black); 
+			bal *= -1; 
+		}
+		std::cout << std::setw(10) << std::setfill('.') << std::right << bal;
+
+		// print total
+		this->setCursorPosition(50, totalLine);
+		this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
+		std::cout << "Total:";
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << " $";
+		if (total2 > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else			   this->setTextColor(ForeGroundColor::Red,   BackGroundColor::Black);
+		std::cout << total2;
+	}
 
 	std::cout.imbue(original_locale);
 }

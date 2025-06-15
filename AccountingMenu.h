@@ -161,7 +161,7 @@ private:
 
 
 private:
-	const std::string OPTIONS[NUM_OPTIONS]   = { "+ Acct", "Chng User", "View", "Add Trans", "Rmv Trans", "Report", "Sort", "Quit"};
+	const std::string MENU_OPTIONS[NUM_OPTIONS]   = { "+ Acct", "Chng User", "View", "Add Trans", "Rmv Trans", "Report", "Sort", "Quit"};
 	const std::string SCROLLING[NUM_SCROLLS] = { "[/|\\]Up", "[\\|/]Down", "[Pg Up]", "[Pg Dwn]", "[End]Quit" };
 
 	const COORD CALCULATOR_COORD = { SCREEN_WIDTH  - 9,
