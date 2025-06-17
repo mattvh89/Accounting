@@ -27,13 +27,24 @@ AccountingMenu::AccountingMenu()
 	if (!SetConsoleMode(m_stdOutHandle, m_outputMode))
 		std::cerr << "SetConsoleMode (output) failed with error " << GetLastError() << '\n';
 
-	// Set screen buffer size first
+	//// Set screen buffer size first
+	//COORD bufferSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
+	//if (!SetConsoleScreenBufferSize(m_stdOutHandle, bufferSize))
+	//	std::cerr << "SetConsoleScreenBufferSize failed with error " << GetLastError() << '\n';
+
+	//SMALL_RECT windowSize = { 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+	//SetConsoleWindowInfo(m_stdOutHandle, TRUE, &windowSize);
+
 	COORD bufferSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
+
+	// Step 1: Set buffer size
 	if (!SetConsoleScreenBufferSize(m_stdOutHandle, bufferSize))
 		std::cerr << "SetConsoleScreenBufferSize failed with error " << GetLastError() << '\n';
 
-	// Then set window size
+	// Step 2: Define window size (must be within the buffer size)
 	SMALL_RECT windowSize = { 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1 };
+
+	// Step 3: Apply window size
 	if (!SetConsoleWindowInfo(m_stdOutHandle, TRUE, &windowSize))
 		std::cerr << "SetConsoleWindowInfo failed with error " << GetLastError() << '\n';
 
@@ -1027,8 +1038,11 @@ bool AccountingMenu::viewAccount()
 		}
 		else
 		{
-			account[0] = static_cast<char>(std::toupper(account[0]));
-			for (unsigned short i = 1; i < account.length(); ++i) account[i] = static_cast<char>(std::tolower(account[i]));
+			if(static_cast<int>(account[0]) >= 48 and static_cast<int>(account[0]) <= 57)
+			{
+				account[0] = static_cast<char>(std::toupper(account[0]));
+				for (unsigned short i = 1; i < account.length(); ++i) account[i] = static_cast<char>(std::tolower(account[i]));
+			}
 		}
 
 	} while (not m_acctManager->accountExists(account));
@@ -1304,6 +1318,8 @@ bool AccountingMenu::generateReport(const std::string& acctName)
 
 void AccountingMenu::summary()
 {
+	constexpr unsigned short ACCOUNT_LENGTH = 16;
+	constexpr unsigned short BALANCE_LENGTH = 11;
 	unsigned short totalLine = 8;
 	double total = 0.00;
 	std::locale original_locale = std::cout.getloc();
@@ -1314,23 +1330,25 @@ void AccountingMenu::summary()
 	this->clearScreen();
 	this->clearLine(SCREEN_HEIGHT - 2);
 
-	this->setCursorPosition(1, 4);
-	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
-	std::cout << std::left << std::setw(20) << std::setfill(' ')
-			  << " Account";
+	for(unsigned short x = 1; x < 90; x += 31)
+	{
+		this->setCursorPosition(x, 4);
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << std::left << std::setw(ACCOUNT_LENGTH) << std::setfill(' ')
+			<< " Account";
 
-	this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
-	std::cout << std::setw(11) << " Balance"
-			  << std::fixed << std::setprecision(2);
-
-	this->setCursorPosition(60, 4);
-	this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
-	std::cout << "Overview";
+		this->setTextColor(ForeGroundColor::Cyan, BackGroundColor::Black);
+		std::cout << std::setw(BALANCE_LENGTH) << " Balance";
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+		if (x < 50) std::cout << "   | " << std::fixed << std::setprecision(2);
+	}
 
 	this->setCursorPosition(1, 5);
 	this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
-	//std::cout << "-------             -------\n";
+
 	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, true);
+
+	this->setCursorPosition(1, 6);
 	for (auto& accountName : m_acctManager->getAccountNames())
 	{
 		if (accountName == "Main"
@@ -1346,10 +1364,10 @@ void AccountingMenu::summary()
 
 		
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << ' ' << std::left << std::setw(20) << std::setfill(' ') << accountName;
+		std::cout << ' ' << std::left << std::setw(ACCOUNT_LENGTH) << std::setfill(' ') << accountName;
 
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black); 
-		std::cout << "$" << std::setw(10) << std::setfill('.');
+		std::cout << "$" << std::setw(BALANCE_LENGTH) << std::setfill('.');
 
 		total += balance;
 
@@ -1360,12 +1378,17 @@ void AccountingMenu::summary()
 			if (balance < 0.00) balance *= -1;
 		}
 
-		std::cout << std::right << balance << "\n";
+		std::cout << std::right << balance;
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+		std::cout << " | \n";
 	}
 
+	this->setCursorPosition(1, totalLine - 1);
 	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, false);
+	this->setCursorPosition(1, totalLine);
 	this->printHorizontalBorder(COORD{ SCREEN_WIDTH, 4 }, ForeGroundColor::Magenta, BackGroundColor::Black, true);
 
+	this->setCursorPosition(1, totalLine + 1);
 	std::cout << ' ';
 	this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 	std::cout << "Total:";
@@ -1383,22 +1406,26 @@ void AccountingMenu::summary()
 		double bal = m_acctManager->getAccount("WorkDone").calculateBalance() * -1;
 		double total2 = bal;
 
-		this->setCursorPosition(50, 6);
+		this->setCursorPosition(33, 6);
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << std::left << std::setfill(' ') << std::setw(20) << "WorkDone";
+		std::cout << std::left << std::setfill(' ') << std::setw(ACCOUNT_LENGTH) << "WorkDone";
 
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 		std::cout << '$';
 		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
 		else			this->setTextColor(ForeGroundColor::Red,   BackGroundColor::Black);
-		std::cout << std::setw(10) << std::setfill('.') << std::right << bal;
+		std::cout << std::setw(BALANCE_LENGTH) << std::setfill('.') << std::right << bal;
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+		std::cout << " | ";
 
+
+		// Expense account
 		bal = m_acctManager->getAccount("Expense").calculateBalance() * -1;
 		total2 += bal;
 
-		this->setCursorPosition(50, 7);
+		this->setCursorPosition(33, 7);
 		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
-		std::cout << std::left << std::setfill(' ') << std::setw(20) << "Expense";
+		std::cout << std::left << std::setfill(' ') << std::setw(ACCOUNT_LENGTH) << "Expense";
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 		std::cout << "$";
 		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
@@ -1407,16 +1434,81 @@ void AccountingMenu::summary()
 			this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black); 
 			bal *= -1; 
 		}
-		std::cout << std::setw(10) << std::setfill('.') << std::right << bal;
+		std::cout << std::setw(BALANCE_LENGTH) << std::setfill('.') << std::right << bal;
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+		std::cout << " | ";
+
 
 		// print total
-		this->setCursorPosition(50, totalLine);
+		this->setCursorPosition(33, totalLine + 1);
 		this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
 		std::cout << "Total:";
 		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
 		std::cout << " $";
 		if (total2 > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
 		else			   this->setTextColor(ForeGroundColor::Red,   BackGroundColor::Black);
+		std::cout << total2;
+	}
+
+	if (m_acctManager->accountExists("2025-Exp_cl") and m_acctManager->accountExists("2025-WD_cl"))
+	{
+		// WorkDone Close account
+		double bal = m_acctManager->getAccount("2025-WD_cl").calculateBalance() * -1;
+		double total2 = bal;
+
+		this->setCursorPosition(66, 6);
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::left << std::setfill(' ') << std::setw(ACCOUNT_LENGTH) << "WorkDone Close";
+
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << '$';
+		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else			this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+		std::cout << std::setw(BALANCE_LENGTH) << std::setfill('.') << std::right << bal;
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+
+
+		// Expense close account
+		bal = m_acctManager->getAccount("2025-Exp_cl").calculateBalance() * -1;
+		total2 += bal;
+
+		this->setCursorPosition(66, 7);
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::left << std::setfill(' ') << std::setw(ACCOUNT_LENGTH) << "Expense Close";
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << "$";
+		if (bal > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else
+		{
+			this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+			bal *= -1;
+		}
+		std::cout << std::setw(BALANCE_LENGTH) << std::setfill('.') << std::right << bal;
+		this->setTextColor(ForeGroundColor::Magenta, BackGroundColor::Black);
+
+
+		// Taxes account
+		bal = m_acctManager->getAccount("Taxes").calculateBalance();
+		total2 -= bal;
+
+		this->setCursorPosition(66, 8);
+		this->setTextColor(ForeGroundColor::Yellow, BackGroundColor::Black);
+		std::cout << std::left << std::setfill(' ') << std::setw(ACCOUNT_LENGTH) << "Taxes";
+
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << '$';
+		this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
+		std::cout << std::setw(BALANCE_LENGTH) << std::setfill('.') << std::right << bal;
+
+
+		// total
+		this->setCursorPosition(66, totalLine + 1);
+		this->setTextColor(ForeGroundColor::Black, BackGroundColor::White);
+		std::cout << "Total:";
+		this->setTextColor(ForeGroundColor::Blue, BackGroundColor::Black);
+		std::cout << " $";
+		if (total2 > 0.00) this->setTextColor(ForeGroundColor::Green, BackGroundColor::Black);
+		else			   this->setTextColor(ForeGroundColor::Red, BackGroundColor::Black);
 		std::cout << total2;
 	}
 
