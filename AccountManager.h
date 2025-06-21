@@ -51,8 +51,17 @@ public:
 																												 const long long& days_since_epoch_date)			const;
 
 							int										indexOfAccount								(const std::string& name)							const;
+
+							void									createOverviewList							(const Ptr<std::string>& list)									{ m_overviewList = list; }
+
+							void									createMonthlyList							(const Ptr<std::string>& list)									{ m_monthlyList  = list; }
+
+							void									createYTDList								(const Ptr<std::string>& list)									{ m_ytdList      = list; }
 private:
 	std::map<std::string, Account>			 m_accounts;
+	Ptr<std::string>						 m_overviewList,
+											 m_monthlyList,
+											 m_ytdList;
 	std::string							     m_name,
 											 m_pw;
 	bool									 m_signinSuccess;

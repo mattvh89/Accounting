@@ -10,7 +10,7 @@
 #include <cassert>
 
 AccountManager::AccountManager(const char* fname, const char* pw)
-			   : m_signinSuccess(false), m_name(fname), m_pw(pw)
+			   : m_overviewList(), m_monthlyList(), m_ytdList(), m_name(fname), m_pw(pw), m_signinSuccess(false)
 {
 	std::ifstream ifs;
 	std::string hash, fileName, accountName;
@@ -97,7 +97,7 @@ void AccountManager::updateMainFile(const char* name)
 		ofs.close();
 	}
 	catch (const std::exception& e) {
-		std::cerr << e.what() << '\n';
+		std::cerr << "Account Manager -\n\tUpdate main file: " << e.what() << '\n';
 	}
 }
 

@@ -1515,6 +1515,14 @@ void AccountingMenu::summary()
 	std::cout.imbue(original_locale);
 }
 
+void AccountingMenu::updateOverviewList()
+{
+	this->clearScreen();
+
+	this->setCursorPosition(1, SIGNIN_LINE);
+	std::cout << "";
+}
+
 void AccountingMenu::updateMainFile()
 {
 	m_acctManager->updateMainFile(m_userName.c_str());
